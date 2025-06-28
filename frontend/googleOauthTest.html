@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google OAuth Test</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        #g_id_signin {
+            margin: 20px auto;
+        }
+        #error-message {
+            color: red;
+            margin: 20px;
+        }
+        #manual-signin {
+            margin: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<h2>Google OAuth Test</h2>
+<div id="g_id_signin"
+     data-type="standard"
+     data-shape="rectangular"
+     data-theme="filled_blue"
+     data-text="signin_with"
+     data-size="large"
+     data-logo_alignment="left"
+     data-client_id="38932804879-3nlsctd94v3150e4oi12lj311pb5lk02.apps.googleusercontent.com"
+     data-callback="handleCredentialResponse"
+     data-auto_prompt="false">
+</div>
+<button id="manual-signin" style="display: none;">Sign in with Google (Manual)</button>
+<div id="error-message"></div>
+<script>
+    window.onload = function() {
+        if (typeof google === 'undefined' || !google.accounts) {
+            document.getElementById('error-message').innerText = 'Error: Google Identity Services library failed to load.';
+            console.error('Google Identity Services not loaded');
+            showManualButton();
+            return;
+        }
+        console.log('Google Identity Services loaded successfully');
+
+        try {
+            google.accounts.id.initialize({
+                client_id: '38932804879-3nlsctd94v3150e4oi12lj311pb5lk02.apps.googleusercontent.com',
+                callback: handleCredentialResponse,
+                auto_select: false
+            });
+            google.accounts.id.renderButton(
+                document.getElementById('g_id_signin'),
+                {
+                    type: 'standard',
+                    theme: 'filled_blue',
+                    size: 'large',
+                    text: 'signin_with',
+                    shape: 'rectangular',
+                    logo_alignment: 'left'
+                }
+            );
+            console.log('Google Sign-In button initialized');
+        } catch (error) {
+            document.getElementById('error-message').innerText = `Error initializing Google Sign-In: ${error.message}`;
+            console.error('Error initializing Google Sign-In:', error);
+            showManualButton();
+        }
+    };
+
+    function handleCredentialResponse(response) {
+        if (!response.credential) {
+            document.getElementById('error-message').innerText = 'Error: No credential received from Google.';
+            console.error('No credential in response:', response);
+            return;
+        }
+        console.log('JWT:', response.credential);
+
+        //fetch('http://localhost:3001/generate-wallet', {
+        fetch('https://vomzersocialsnodejsintegration-production.up.railway.app/api/generate-wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jwt: response.credential,
+                username: 'testuser'
+            })
+        })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! Status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => console.log('Response:', data))
+            .catch(err => {
+                document.getElementById('error-message').innerText = `Fetch error: ${err.message}`;
+                console.error('Error:', err);
+            });
+    }
+
+    function showManualButton() {
+        const manualButton = document.getElementById('manual-signin');
+        manualButton.style.display = 'block';
+        manualButton.onclick = function() {
+            google.accounts.id.prompt();
+            console.log('Manual Sign-In prompted');
+        };
+    }
+</script>
+</body>
+</html>
+
